@@ -1,0 +1,18 @@
+{
+  "name": "markdown-editor",
+  "version": "1.0.0",
+  "description": "A simple markdown editor with live preview",
+  "main": "main.js",
+  "scripts": {
+    "build:renderer": "esbuild src/renderer.js --bundle --outfile=dist/renderer.bundle.js --format=iife --platform=browser --loader:.css=css --loader:.woff=file --loader:.woff2=file --loader:.ttf=file --loader:.eot=file --loader:.svg=file --asset-names=[name]-[hash]",
+    "prestart": "npm run build:renderer",
+    "start": "electron ."
+  },
+  "dependencies": {
+    "@milkdown/crepe": "^7.5.0"
+  },
+  "devDependencies": {
+    "electron": "^30.0.0",
+    "esbuild": "^0.24.0"
+  }
+}

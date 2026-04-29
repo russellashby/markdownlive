@@ -10,9 +10,12 @@ const wordCountEl = document.getElementById('word-count');
 const saveStatusEl = document.getElementById('save-status');
 const deleteBtn = document.getElementById('delete-btn');
 
+const SAVE_DEBOUNCE_MS = 1500;
+
 let crepe = null;
 let currentFile = null;
 let pendingMarkdown = null;
+let lastSavedMarkdown = null;
 let saveTimer = null;
 let renameTimer = null;
 
@@ -71,6 +74,7 @@ async function openFile(file) {
   const content = await window.api.readFile(file.path);
   currentFile = { path: file.path, name: file.name };
   pendingMarkdown = content;
+  lastSavedMarkdown = content;
   titleInput.value = file.name;
   setActiveItem(file.path);
   await mountCrepe(content);
@@ -82,6 +86,7 @@ async function clearEditor() {
   await destroyCrepe();
   currentFile = null;
   pendingMarkdown = null;
+  lastSavedMarkdown = null;
   titleInput.value = '';
   updateWordCount('');
 }
@@ -94,6 +99,7 @@ async function mountCrepe(initial) {
 
   crepe.on(listener => {
     listener.markdownUpdated((_ctx, md) => {
+      if (md === pendingMarkdown) return;
       pendingMarkdown = md;
       updateWordCount(md);
       scheduleSave();
@@ -105,16 +111,24 @@ async function mountCrepe(initial) {
 
 function scheduleSave() {
   if (!currentFile) return;
-  setSaveStatus('Saving…');
+  if (pendingMarkdown === lastSavedMarkdown) return;
+  setSaveStatus('Unsaved');
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(doSave, 400);
+  saveTimer = setTimeout(doSave, SAVE_DEBOUNCE_MS);
 }
 
 async function doSave() {
   saveTimer = null;
   if (!currentFile || pendingMarkdown == null) return;
-  await window.api.saveFile(currentFile.path, pendingMarkdown);
-  setSaveStatus('Saved');
+  if (pendingMarkdown === lastSavedMarkdown) {
+    setSaveStatus('Saved');
+    return;
+  }
+  setSaveStatus('Saving…');
+  const snapshot = pendingMarkdown;
+  await window.api.saveFile(currentFile.path, snapshot);
+  lastSavedMarkdown = snapshot;
+  if (pendingMarkdown === lastSavedMarkdown) setSaveStatus('Saved');
 }
 
 async function flushSave() {
@@ -176,6 +190,7 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+window.addEventListener('blur', () => { flushSave(); });
 window.addEventListener('beforeunload', () => {
   if (saveTimer) doSave();
 });

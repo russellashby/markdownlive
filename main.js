@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Menu, MenuItem } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
 const os = require('os');
@@ -46,6 +46,122 @@ function hello() {
   }
 }
 
+function buildAppMenu() {
+  const isMac = process.platform === 'darwin';
+  const template = [
+    ...(isMac ? [{
+      label: app.name,
+      submenu: [
+        { role: 'about' },
+        { type: 'separator' },
+        { role: 'services' },
+        { type: 'separator' },
+        { role: 'hide' },
+        { role: 'hideOthers' },
+        { role: 'unhide' },
+        { type: 'separator' },
+        { role: 'quit' }
+      ]
+    }] : []),
+    {
+      label: 'Edit',
+      submenu: [
+        { role: 'undo' },
+        { role: 'redo' },
+        { type: 'separator' },
+        { role: 'cut' },
+        { role: 'copy' },
+        { role: 'paste' },
+        { role: 'pasteAndMatchStyle' },
+        { role: 'delete' },
+        { role: 'selectAll' },
+        { type: 'separator' },
+        {
+          label: 'Speech',
+          submenu: [
+            { role: 'startSpeaking' },
+            { role: 'stopSpeaking' }
+          ]
+        },
+        ...(isMac ? [
+          { type: 'separator' },
+          {
+            label: 'Substitutions',
+            submenu: [
+              { role: 'showSubstitutions' },
+              { type: 'separator' },
+              { role: 'toggleSmartQuotes' },
+              { role: 'toggleSmartDashes' },
+              { role: 'toggleTextReplacement' }
+            ]
+          },
+          {
+            label: 'Spelling and Grammar',
+            submenu: [
+              { role: 'showSpellingAndGrammar' },
+              { role: 'startSpeaking' }
+            ]
+          }
+        ] : [])
+      ]
+    },
+    {
+      label: 'View',
+      submenu: [
+        { role: 'reload' },
+        { role: 'forceReload' },
+        { role: 'toggleDevTools' },
+        { type: 'separator' },
+        { role: 'resetZoom' },
+        { role: 'zoomIn' },
+        { role: 'zoomOut' },
+        { type: 'separator' },
+        { role: 'togglefullscreen' }
+      ]
+    },
+    { role: 'windowMenu' }
+  ];
+
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+}
+
+function attachContextMenu(win) {
+  win.webContents.on('context-menu', (_event, params) => {
+    const menu = new Menu();
+
+    for (const suggestion of params.dictionarySuggestions) {
+      menu.append(new MenuItem({
+        label: suggestion,
+        click: () => win.webContents.replaceMisspelling(suggestion)
+      }));
+    }
+
+    if (params.misspelledWord) {
+      if (params.dictionarySuggestions.length === 0) {
+        menu.append(new MenuItem({ label: 'No suggestions', enabled: false }));
+      }
+      menu.append(new MenuItem({ type: 'separator' }));
+      menu.append(new MenuItem({
+        label: 'Add to Dictionary',
+        click: () => win.webContents.session.addWordToSpellCheckerDictionary(params.misspelledWord)
+      }));
+      menu.append(new MenuItem({ type: 'separator' }));
+    }
+
+    if (params.isEditable) {
+      menu.append(new MenuItem({ role: 'cut' }));
+      menu.append(new MenuItem({ role: 'copy' }));
+      menu.append(new MenuItem({ role: 'paste' }));
+      menu.append(new MenuItem({ type: 'separator' }));
+      menu.append(new MenuItem({ role: 'selectAll' }));
+    } else if (params.selectionText) {
+      menu.append(new MenuItem({ role: 'copy' }));
+    }
+
+    if (menu.items.length > 0) menu.popup({ window: win });
+  });
+}
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1200,
@@ -56,14 +172,19 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false
+      sandbox: false,
+      spellcheck: true
     }
   });
+
+  win.webContents.session.setSpellCheckerLanguages(['en-GB', 'en-US']);
+  attachContextMenu(win);
 
   win.loadFile('index.html');
 }
 
 app.whenReady().then(async () => {
+  buildAppMenu();
   await ensureNotesDir();
   createWindow();
 

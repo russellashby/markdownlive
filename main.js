@@ -167,7 +167,7 @@ function watchNotesDir(win) {
   let timer = null;
   let watcher;
   try {
-    watcher = watch(NOTES_DIR, { persistent: true }, () => {
+    watcher = watch(NOTES_DIR, { persistent: true, recursive: true }, () => {
       clearTimeout(timer);
       timer = setTimeout(() => {
         if (!win.isDestroyed()) win.webContents.send('notes-dir-changed');
@@ -220,20 +220,40 @@ app.on('window-all-closed', () => {
 });
 
 ipcMain.handle('list-files', async () => {
-  const entries = await fs.readdir(NOTES_DIR, { withFileTypes: true });
+  const rootEntries = await fs.readdir(NOTES_DIR, { withFileTypes: true });
   const files = [];
-  for (const entry of entries) {
+  for (const entry of rootEntries) {
     if (entry.isFile() && entry.name.endsWith('.md')) {
       const full = path.join(NOTES_DIR, entry.name);
       const stat = await fs.stat(full);
       files.push({
         name: entry.name.replace(/\.md$/, ''),
         path: full,
-        mtime: stat.mtimeMs
+        mtime: stat.mtimeMs,
+        folder: null
       });
+    } else if (entry.isDirectory()) {
+      const folderPath = path.join(NOTES_DIR, entry.name);
+      let subEntries;
+      try {
+        subEntries = await fs.readdir(folderPath, { withFileTypes: true });
+      } catch {
+        continue;
+      }
+      for (const sub of subEntries) {
+        if (sub.isFile() && sub.name.endsWith('.md')) {
+          const full = path.join(folderPath, sub.name);
+          const stat = await fs.stat(full);
+          files.push({
+            name: sub.name.replace(/\.md$/, ''),
+            path: full,
+            mtime: stat.mtimeMs,
+            folder: entry.name
+          });
+        }
+      }
     }
   }
-  files.sort((a, b) => b.mtime - a.mtime);
   return files;
 });
 
@@ -265,7 +285,8 @@ ipcMain.handle('create-file', async (_evt, name) => {
 
 ipcMain.handle('rename-file', async (_evt, { filePath, newName }) => {
   const safeName = (newName || 'Untitled').replace(/[\\/:*?"<>|]/g, '').trim() || 'Untitled';
-  const newPath = path.join(NOTES_DIR, `${safeName}.md`);
+  const dir = path.dirname(filePath);
+  const newPath = path.join(dir, `${safeName}.md`);
   if (newPath === filePath) return filePath;
   try {
     await fs.access(newPath);

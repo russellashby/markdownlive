@@ -55,3 +55,8 @@ The next launch will recreate the directory and seed the welcome note.
 ### Sync with disk
 - [28 — Externally added file appears in the sidebar](28-external-add-refreshes-sidebar.md)
 - [29 — Externally deleted file disappears from the sidebar](29-external-delete-refreshes-sidebar.md)
+
+### Folder grouping
+- [30 — Sidebar groups notes by folder](30-sidebar-groups-by-folder.md)
+- [31 — Folders expand and collapse on click](31-folder-expand-collapse.md)
+- [32 — Collapsed-folder state persists across restarts](32-folder-collapsed-state-persists.md)

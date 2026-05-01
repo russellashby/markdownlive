@@ -90,6 +90,52 @@ html, body {
   border-left-color: #4c8bf5;
 }
 
+.folder-group {
+  list-style: none;
+}
+
+.folder-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #6f7689;
+  cursor: pointer;
+  user-select: none;
+  -webkit-app-region: no-drag;
+}
+
+.folder-header:hover {
+  color: #c5cad6;
+}
+
+.folder-chevron {
+  display: inline-block;
+  width: 10px;
+  font-size: 10px;
+  transition: transform 120ms ease;
+}
+
+.folder-group.collapsed .folder-chevron {
+  transform: rotate(-90deg);
+}
+
+.folder-files {
+  list-style: none;
+}
+
+.folder-files .file-item {
+  padding-left: 28px;
+}
+
+.folder-group.collapsed .folder-files {
+  display: none;
+}
+
 /* Editor pane */
 .editor-pane {
   display: flex;

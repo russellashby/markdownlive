@@ -29,19 +29,86 @@ function updateWordCount(md) {
   wordCountEl.textContent = `${words} word${words === 1 ? '' : 's'}`;
 }
 
+const COLLAPSED_KEY = 'mdedit.foldersCollapsed';
+
+function getCollapsedFolders() {
+  try {
+    const raw = localStorage.getItem(COLLAPSED_KEY);
+    return new Set(raw ? JSON.parse(raw) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function saveCollapsedFolders(set) {
+  try {
+    localStorage.setItem(COLLAPSED_KEY, JSON.stringify(Array.from(set)));
+  } catch {}
+}
+
+function toggleFolderCollapsed(folderName) {
+  const collapsed = getCollapsedFolders();
+  if (collapsed.has(folderName)) collapsed.delete(folderName);
+  else collapsed.add(folderName);
+  saveCollapsedFolders(collapsed);
+}
+
+function makeFileItem(file, activatePath) {
+  const li = document.createElement('li');
+  li.className = 'file-item';
+  li.dataset.path = file.path;
+  li.textContent = file.name;
+  if (currentFile && currentFile.path === file.path) li.classList.add('active');
+  if (activatePath && activatePath === file.path) li.classList.add('active');
+  li.addEventListener('click', () => openFile(file));
+  return li;
+}
+
 async function loadFiles(activatePath) {
   const files = await window.api.listFiles();
-  fileListEl.innerHTML = '';
+  files.sort((a, b) => b.mtime - a.mtime);
+  const rootFiles = files.filter(f => !f.folder);
+  const folderMap = new Map();
   for (const file of files) {
-    const li = document.createElement('li');
-    li.className = 'file-item';
-    li.dataset.path = file.path;
-    li.textContent = file.name;
-    if (currentFile && currentFile.path === file.path) li.classList.add('active');
-    if (activatePath && activatePath === file.path) li.classList.add('active');
-    li.addEventListener('click', () => openFile(file));
-    fileListEl.appendChild(li);
+    if (!file.folder) continue;
+    if (!folderMap.has(file.folder)) folderMap.set(file.folder, []);
+    folderMap.get(file.folder).push(file);
   }
+  const folderNames = Array.from(folderMap.keys()).sort((a, b) => a.localeCompare(b));
+  const collapsed = getCollapsedFolders();
+
+  fileListEl.innerHTML = '';
+  for (const file of rootFiles) {
+    fileListEl.appendChild(makeFileItem(file, activatePath));
+  }
+  for (const name of folderNames) {
+    const isCollapsed = collapsed.has(name);
+    const group = document.createElement('li');
+    group.className = 'folder-group';
+    if (isCollapsed) group.classList.add('collapsed');
+
+    const header = document.createElement('div');
+    header.className = 'folder-header';
+    header.innerHTML = '<span class="folder-chevron">▾</span>';
+    const label = document.createElement('span');
+    label.className = 'folder-name';
+    label.textContent = name;
+    header.appendChild(label);
+    header.addEventListener('click', () => {
+      toggleFolderCollapsed(name);
+      group.classList.toggle('collapsed');
+    });
+    group.appendChild(header);
+
+    const sub = document.createElement('ul');
+    sub.className = 'folder-files';
+    for (const file of folderMap.get(name)) {
+      sub.appendChild(makeFileItem(file, activatePath));
+    }
+    group.appendChild(sub);
+    fileListEl.appendChild(group);
+  }
+
   if (!currentFile && files.length > 0) {
     await openFile(files[0]);
   } else if (currentFile) {

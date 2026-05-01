@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, dialog, Menu, MenuItem } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
+const { watch } = require('fs');
 const os = require('os');
 
 const NOTES_DIR = path.join(os.homedir(), 'MarkdownNotes');
@@ -162,6 +163,26 @@ function attachContextMenu(win) {
   });
 }
 
+function watchNotesDir(win) {
+  let timer = null;
+  let watcher;
+  try {
+    watcher = watch(NOTES_DIR, { persistent: true }, () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        if (!win.isDestroyed()) win.webContents.send('notes-dir-changed');
+      }, 200);
+    });
+  } catch (err) {
+    console.error('Failed to watch notes dir:', err);
+    return;
+  }
+  win.on('closed', () => {
+    clearTimeout(timer);
+    try { watcher.close(); } catch {}
+  });
+}
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1200,
@@ -179,6 +200,7 @@ function createWindow() {
 
   win.webContents.session.setSpellCheckerLanguages(['en-GB', 'en-US']);
   attachContextMenu(win);
+  watchNotesDir(win);
 
   win.loadFile('index.html');
 }

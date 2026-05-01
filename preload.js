@@ -8,5 +8,10 @@ contextBridge.exposeInMainWorld('api', {
   renameFile: (filePath, newName) => ipcRenderer.invoke('rename-file', { filePath, newName }),
   deleteFile: (filePath) => ipcRenderer.invoke('delete-file', filePath),
   importFile: (name, content) => ipcRenderer.invoke('import-file', { name, content }),
-  notesDir: () => ipcRenderer.invoke('notes-dir')
+  notesDir: () => ipcRenderer.invoke('notes-dir'),
+  onNotesChanged: (cb) => {
+    const handler = () => cb();
+    ipcRenderer.on('notes-dir-changed', handler);
+    return () => ipcRenderer.removeListener('notes-dir-changed', handler);
+  }
 });

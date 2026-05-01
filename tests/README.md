@@ -51,3 +51,7 @@ The next launch will recreate the directory and seed the welcome note.
 - [25 — Drag and drop imports a markdown file](25-drag-drop-imports-markdown-file.md)
 - [26 — Dragging multiple markdown files imports all of them](26-drag-drop-multiple-files.md)
 - [27 — Importing a duplicate filename is disambiguated](27-drag-drop-duplicate-filename.md)
+
+### Sync with disk
+- [28 — Externally added file appears in the sidebar](28-external-add-refreshes-sidebar.md)
+- [29 — Externally deleted file disappears from the sidebar](29-external-delete-refreshes-sidebar.md)

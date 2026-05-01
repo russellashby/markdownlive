@@ -234,4 +234,6 @@ document.addEventListener('drop', async (e) => {
   }
 }, true);
 
+window.api.onNotesChanged(() => { loadFiles(); });
+
 loadFiles();

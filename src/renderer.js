@@ -9,10 +9,14 @@ const editorRoot = document.getElementById('editor');
 const wordCountEl = document.getElementById('word-count');
 const saveStatusEl = document.getElementById('save-status');
 const deleteBtn = document.getElementById('delete-btn');
+const modeToggleBtn = document.getElementById('mode-toggle');
 
 const SAVE_DEBOUNCE_MS = 1500;
+const MODE_KEY = 'mdedit.mode';
 
+let mode = localStorage.getItem(MODE_KEY) === 'raw' ? 'raw' : 'live';
 let crepe = null;
+let rawEditor = null;
 let currentFile = null;
 let pendingMarkdown = null;
 let lastSavedMarkdown = null;
@@ -126,31 +130,32 @@ function setActiveItem(filePath) {
   });
 }
 
-async function destroyCrepe() {
+async function destroyEditor() {
+  await flushSave();
   if (crepe) {
-    await flushSave();
     try { await crepe.destroy(); } catch {}
     crepe = null;
   }
+  rawEditor = null;
   editorRoot.innerHTML = '';
 }
 
 async function openFile(file) {
   if (currentFile && currentFile.path === file.path) return;
-  await destroyCrepe();
+  await destroyEditor();
   const content = await window.api.readFile(file.path);
   currentFile = { path: file.path, name: file.name };
   pendingMarkdown = content;
   lastSavedMarkdown = content;
   titleInput.value = file.name;
   setActiveItem(file.path);
-  await mountCrepe(content);
+  await mountEditor(content);
   updateWordCount(content);
   setSaveStatus('Saved');
 }
 
 async function clearEditor() {
-  await destroyCrepe();
+  await destroyEditor();
   currentFile = null;
   pendingMarkdown = null;
   lastSavedMarkdown = null;
@@ -193,6 +198,29 @@ async function mountCrepe(initial) {
   });
 
   await crepe.create();
+}
+
+function mountRaw(initial) {
+  rawEditor = document.createElement('textarea');
+  rawEditor.className = 'raw-editor';
+  rawEditor.spellcheck = true;
+  rawEditor.value = initial || '';
+  rawEditor.addEventListener('input', () => {
+    if (rawEditor.value === pendingMarkdown) return;
+    pendingMarkdown = rawEditor.value;
+    updateWordCount(pendingMarkdown);
+    scheduleSave();
+  });
+  editorRoot.appendChild(rawEditor);
+}
+
+async function mountEditor(initial) {
+  if (mode === 'raw') mountRaw(initial);
+  else await mountCrepe(initial);
+}
+
+function updateModeButton() {
+  modeToggleBtn.classList.toggle('active', mode === 'raw');
 }
 
 function scheduleSave() {
@@ -265,6 +293,22 @@ deleteBtn.addEventListener('click', async () => {
   }
 });
 
+modeToggleBtn.addEventListener('click', async () => {
+  await flushSave();
+  mode = mode === 'live' ? 'raw' : 'live';
+  localStorage.setItem(MODE_KEY, mode);
+  updateModeButton();
+  if (currentFile) {
+    const snapshot = pendingMarkdown ?? '';
+    await destroyEditor();
+    pendingMarkdown = snapshot;
+    lastSavedMarkdown = snapshot;
+    await mountEditor(snapshot);
+    updateWordCount(snapshot);
+    setSaveStatus('Saved');
+  }
+});
+
 document.addEventListener('keydown', (e) => {
   if ((e.metaKey || e.ctrlKey) && e.key === 's') {
     e.preventDefault();
@@ -325,4 +369,5 @@ document.addEventListener('drop', async (e) => {
 
 window.api.onNotesChanged(() => { loadFiles(); });
 
+updateModeButton();
 loadFiles();

@@ -188,6 +188,22 @@ html, body {
   border-color: #f1c8c8;
 }
 
+.ghost-btn.active {
+  background: #eef2ff;
+  color: #4c8bf5;
+  border-color: #c5d6f7;
+}
+
+.ghost-btn.active:hover {
+  background: #dde6ff;
+  color: #4c8bf5;
+  border-color: #c5d6f7;
+}
+
+#mode-toggle {
+  margin-right: 6px;
+}
+
 .editor-host {
   flex: 1;
   overflow-y: auto;
@@ -200,8 +216,32 @@ html, body {
   padding: 24px 64px 60px;
 }
 
+.raw-editor {
+  display: block;
+  width: 100%;
+  max-width: 1100px;
+  min-height: 100%;
+  margin: 0 auto;
+  padding: 24px 64px 60px;
+  border: none;
+  outline: none;
+  resize: none;
+  background: transparent;
+  box-sizing: border-box;
+  font-family: 'SF Mono', Menlo, Monaco, Consolas, monospace;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: #2b2f3a;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 @media (min-width: 1400px) {
   .editor-host .milkdown {
+    max-width: 1400px;
+    padding: 32px 96px 80px;
+  }
+  .raw-editor {
     max-width: 1400px;
     padding: 32px 96px 80px;
   }

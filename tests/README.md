@@ -64,3 +64,8 @@ The next launch will recreate the directory and seed the welcome note.
 ### Images
 - [33 — Inserting an image saves the file to disk](33-image-upload-saves-to-disk.md)
 - [34 — Inserted images survive an app restart](34-image-survives-restart.md)
+
+### Raw markdown mode
+- [35 — Toggle between raw and live editing modes](35-toggle-raw-and-live-mode.md)
+- [36 — Raw mode autosaves typed changes](36-raw-mode-autosaves.md)
+- [37 — Editor mode persists across restarts and notes](37-mode-persists-across-restart.md)

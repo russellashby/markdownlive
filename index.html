@@ -25,6 +25,7 @@
         <button id="sidebar-expand" class="ghost-btn pane-toggle-btn" title="Expand notes panel" aria-label="Expand notes panel">›</button>
         <input id="title-input" class="title-input" type="text" placeholder="Untitled" />
         <button id="mode-toggle" class="ghost-btn" title="Toggle raw markdown">Raw</button>
+        <button id="terminal-toggle" class="ghost-btn" title="Toggle terminal (Cmd+`)">Terminal</button>
         <button id="delete-btn" class="ghost-btn" title="Delete note">Delete</button>
       </header>
       <div id="editor" class="editor-host"></div>
@@ -32,6 +33,12 @@
         <span id="word-count">0 words</span>
         <span id="save-status">Saved</span>
       </div>
+    </section>
+
+    <div id="terminal-divider" class="terminal-divider"></div>
+
+    <section class="terminal-pane">
+      <div id="terminal-host" class="terminal-host"></div>
     </section>
   </div>
 

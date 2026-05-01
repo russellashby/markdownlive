@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs').promises;
 const { watch } = require('fs');
 const os = require('os');
+const pty = require('node-pty');
 
 const NOTES_DIR = path.join(os.homedir(), 'MarkdownNotes');
 
@@ -353,3 +354,59 @@ ipcMain.handle('save-image', async (_evt, { name, bytes }) => {
 });
 
 ipcMain.handle('notes-dir', () => NOTES_DIR);
+
+const ptyProcesses = new Map();
+let nextPtyId = 1;
+
+function shellCommand() {
+  return process.env.SHELL || (process.platform === 'win32' ? 'powershell.exe' : '/bin/zsh');
+}
+
+ipcMain.handle('terminal-spawn', (evt, { cols, rows }) => {
+  const id = nextPtyId++;
+  const proc = pty.spawn(shellCommand(), [], {
+    name: 'xterm-color',
+    cols: cols || 80,
+    rows: rows || 24,
+    cwd: NOTES_DIR,
+    env: process.env
+  });
+  ptyProcesses.set(id, proc);
+
+  proc.onData((data) => {
+    if (!evt.sender.isDestroyed()) evt.sender.send(`terminal-data:${id}`, data);
+  });
+  proc.onExit(({ exitCode }) => {
+    ptyProcesses.delete(id);
+    if (!evt.sender.isDestroyed()) evt.sender.send(`terminal-exit:${id}`, exitCode);
+  });
+
+  return id;
+});
+
+ipcMain.on('terminal-write', (_evt, { id, data }) => {
+  const proc = ptyProcesses.get(id);
+  if (proc) proc.write(data);
+});
+
+ipcMain.on('terminal-resize', (_evt, { id, cols, rows }) => {
+  const proc = ptyProcesses.get(id);
+  if (proc) {
+    try { proc.resize(cols, rows); } catch {}
+  }
+});
+
+ipcMain.on('terminal-kill', (_evt, { id }) => {
+  const proc = ptyProcesses.get(id);
+  if (proc) {
+    try { proc.kill(); } catch {}
+    ptyProcesses.delete(id);
+  }
+});
+
+app.on('before-quit', () => {
+  for (const proc of ptyProcesses.values()) {
+    try { proc.kill(); } catch {}
+  }
+  ptyProcesses.clear();
+});

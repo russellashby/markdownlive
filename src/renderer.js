@@ -1,6 +1,9 @@
 import { Crepe } from '@milkdown/crepe';
 import '@milkdown/crepe/theme/common/style.css';
 import '@milkdown/crepe/theme/frame.css';
+import { Terminal } from 'xterm';
+import { FitAddon } from 'xterm-addon-fit';
+import 'xterm/css/xterm.css';
 
 const fileListEl = document.getElementById('file-list');
 const newFileBtn = document.getElementById('new-file-btn');
@@ -13,10 +16,17 @@ const modeToggleBtn = document.getElementById('mode-toggle');
 const appEl = document.querySelector('.app');
 const sidebarCollapseBtn = document.getElementById('sidebar-collapse');
 const sidebarExpandBtn = document.getElementById('sidebar-expand');
+const terminalToggleBtn = document.getElementById('terminal-toggle');
+const terminalHostEl = document.getElementById('terminal-host');
+const terminalDividerEl = document.getElementById('terminal-divider');
 
 const SAVE_DEBOUNCE_MS = 1500;
 const MODE_KEY = 'mdedit.mode';
 const SIDEBAR_KEY = 'mdedit.sidebarCollapsed';
+const TERMINAL_VISIBLE_KEY = 'mdedit.terminalVisible';
+const TERMINAL_WIDTH_KEY = 'mdedit.terminalWidth';
+const TERMINAL_MIN_WIDTH = 240;
+const TERMINAL_MAX_WIDTH = 900;
 
 let mode = localStorage.getItem(MODE_KEY) === 'raw' ? 'raw' : 'live';
 let crepe = null;
@@ -371,7 +381,39 @@ document.addEventListener('drop', async (e) => {
   }
 }, true);
 
-window.api.onNotesChanged(() => { loadFiles(); });
+async function reloadCurrentFileFromDisk() {
+  if (!currentFile) return;
+  if (pendingMarkdown !== lastSavedMarkdown) return;
+  let onDisk;
+  try {
+    onDisk = await window.api.readFile(currentFile.path);
+  } catch {
+    return;
+  }
+  if (onDisk === lastSavedMarkdown) return;
+
+  pendingMarkdown = onDisk;
+  lastSavedMarkdown = onDisk;
+  updateWordCount(onDisk);
+  setSaveStatus('Saved');
+
+  if (mode === 'raw' && rawEditor) {
+    const start = rawEditor.selectionStart;
+    const end = rawEditor.selectionEnd;
+    rawEditor.value = onDisk;
+    try { rawEditor.setSelectionRange(start, end); } catch {}
+  } else {
+    await destroyEditor();
+    pendingMarkdown = onDisk;
+    lastSavedMarkdown = onDisk;
+    await mountEditor(onDisk);
+  }
+}
+
+window.api.onNotesChanged(async () => {
+  await loadFiles();
+  await reloadCurrentFileFromDisk();
+});
 
 function setSidebarCollapsed(collapsed) {
   appEl.classList.toggle('sidebar-collapsed', collapsed);
@@ -383,6 +425,117 @@ sidebarExpandBtn.addEventListener('click', () => setSidebarCollapsed(false));
 
 if (localStorage.getItem(SIDEBAR_KEY) === '1') {
   appEl.classList.add('sidebar-collapsed');
+}
+
+let terminal = null;
+let terminalFit = null;
+let terminalId = null;
+let terminalDataUnsub = null;
+let terminalExitUnsub = null;
+
+function clampTerminalWidth(px) {
+  return Math.max(TERMINAL_MIN_WIDTH, Math.min(TERMINAL_MAX_WIDTH, px));
+}
+
+function setTerminalWidth(px) {
+  appEl.style.setProperty('--terminal-w', `${px}px`);
+  localStorage.setItem(TERMINAL_WIDTH_KEY, String(px));
+}
+
+function fitTerminal() {
+  if (!terminal || !terminalFit) return;
+  if (!terminalHostEl.offsetWidth || !terminalHostEl.offsetHeight) return;
+  try {
+    terminalFit.fit();
+    if (terminalId != null) {
+      window.api.terminal.resize(terminalId, terminal.cols, terminal.rows);
+    }
+  } catch {}
+}
+
+async function ensureTerminalSpawned() {
+  if (terminal) return;
+  terminal = new Terminal({
+    cursorBlink: true,
+    fontFamily: 'SF Mono, Menlo, Monaco, Consolas, monospace',
+    fontSize: 12.5,
+    theme: { background: '#1e2230', foreground: '#e6e8ef' }
+  });
+  terminalFit = new FitAddon();
+  terminal.loadAddon(terminalFit);
+  terminal.open(terminalHostEl);
+
+  const ro = new ResizeObserver(() => fitTerminal());
+  ro.observe(terminalHostEl);
+  fitTerminal();
+
+  terminalId = await window.api.terminal.spawn(terminal.cols, terminal.rows);
+  terminalDataUnsub = window.api.terminal.onData(terminalId, (data) => {
+    terminal.write(data);
+  });
+  terminalExitUnsub = window.api.terminal.onExit(terminalId, () => {
+    terminal.write('\r\n\x1b[33m[process exited — toggle off and on to restart]\x1b[0m\r\n');
+    terminalDataUnsub && terminalDataUnsub();
+    terminalExitUnsub && terminalExitUnsub();
+    terminalId = null;
+  });
+  terminal.onData((data) => {
+    if (terminalId != null) window.api.terminal.write(terminalId, data);
+  });
+}
+
+function setTerminalVisible(visible) {
+  appEl.classList.toggle('terminal-visible', visible);
+  localStorage.setItem(TERMINAL_VISIBLE_KEY, visible ? '1' : '0');
+  terminalToggleBtn.classList.toggle('active', visible);
+  if (visible) {
+    ensureTerminalSpawned().then(() => {
+      requestAnimationFrame(fitTerminal);
+      setTimeout(() => terminal && terminal.focus(), 50);
+    });
+  }
+}
+
+terminalToggleBtn.addEventListener('click', () => {
+  setTerminalVisible(!appEl.classList.contains('terminal-visible'));
+});
+
+document.addEventListener('keydown', (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key === '`') {
+    e.preventDefault();
+    terminalToggleBtn.click();
+  }
+});
+
+let dragStartX = 0;
+let dragStartWidth = 0;
+
+terminalDividerEl.addEventListener('mousedown', (e) => {
+  if (!appEl.classList.contains('terminal-visible')) return;
+  dragStartX = e.clientX;
+  dragStartWidth = parseInt(getComputedStyle(appEl).getPropertyValue('--terminal-w')) || 420;
+  appEl.classList.add('terminal-dragging');
+  e.preventDefault();
+});
+
+document.addEventListener('mousemove', (e) => {
+  if (!appEl.classList.contains('terminal-dragging')) return;
+  const delta = dragStartX - e.clientX;
+  setTerminalWidth(clampTerminalWidth(dragStartWidth + delta));
+});
+
+document.addEventListener('mouseup', () => {
+  if (!appEl.classList.contains('terminal-dragging')) return;
+  appEl.classList.remove('terminal-dragging');
+  fitTerminal();
+});
+
+window.addEventListener('resize', () => fitTerminal());
+
+const savedTerminalWidth = parseInt(localStorage.getItem(TERMINAL_WIDTH_KEY) || '0');
+if (savedTerminalWidth) appEl.style.setProperty('--terminal-w', `${clampTerminalWidth(savedTerminalWidth)}px`);
+if (localStorage.getItem(TERMINAL_VISIBLE_KEY) === '1') {
+  setTerminalVisible(true);
 }
 
 updateModeButton();

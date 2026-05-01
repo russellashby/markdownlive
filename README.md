@@ -2,10 +2,6 @@
 
 A simple, fast markdown editor for macOS with a live WYSIWYG view, a flat working directory, and the option to drop into raw markdown whenever you need to.
 
-## Screenshot
-
-<!-- TODO: add screenshot of the app here -->
-
 ![MarkdownLive](docs/screenshot.png)
 
 ## Features

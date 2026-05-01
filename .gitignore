@@ -1,6 +1,7 @@
 node_modules/
 dist/
 release/
+markdown_demo.md
 .DS_Store
 .nwave/
 npm-debug.log*

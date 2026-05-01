@@ -46,3 +46,8 @@ The next launch will recreate the directory and seed the welcome note.
 - [22 — Right-click shows spelling suggestions](22-right-click-shows-suggestions.md)
 - [23 — Add to Dictionary persists across sessions](23-add-word-to-dictionary.md)
 - [24 — Edit menu exposes macOS substitutions](24-edit-menu-substitutions.md)
+
+### Import
+- [25 — Drag and drop imports a markdown file](25-drag-drop-imports-markdown-file.md)
+- [26 — Dragging multiple markdown files imports all of them](26-drag-drop-multiple-files.md)
+- [27 — Importing a duplicate filename is disambiguated](27-drag-drop-duplicate-filename.md)

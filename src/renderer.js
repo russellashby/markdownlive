@@ -195,4 +195,43 @@ window.addEventListener('beforeunload', () => {
   if (saveTimer) doSave();
 });
 
+function eventHasFiles(e) {
+  return !!e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files');
+}
+
+function isMarkdownFile(file) {
+  return /\.md$/i.test(file.name) || file.type === 'text/markdown';
+}
+
+document.addEventListener('dragover', (e) => {
+  if (!eventHasFiles(e)) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'copy';
+}, true);
+
+document.addEventListener('drop', async (e) => {
+  if (!eventHasFiles(e)) return;
+  e.preventDefault();
+  e.stopPropagation();
+
+  const files = Array.from(e.dataTransfer.files || []).filter(isMarkdownFile);
+  if (files.length === 0) return;
+
+  await flushSave();
+
+  let lastImportedPath = null;
+  for (const file of files) {
+    const content = await file.text();
+    const baseName = file.name.replace(/\.md$/i, '');
+    lastImportedPath = await window.api.importFile(baseName, content);
+  }
+
+  if (lastImportedPath) {
+    currentFile = null;
+    await loadFiles(lastImportedPath);
+    const imported = (await window.api.listFiles()).find(f => f.path === lastImportedPath);
+    if (imported) await openFile(imported);
+  }
+}, true);
+
 loadFiles();

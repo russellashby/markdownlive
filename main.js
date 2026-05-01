@@ -270,4 +270,22 @@ ipcMain.handle('delete-file', async (_evt, filePath) => {
   return false;
 });
 
+ipcMain.handle('import-file', async (_evt, { name, content }) => {
+  const stripped = (name || 'Untitled').replace(/\.md$/i, '');
+  const safeName = stripped.replace(/[\\/:*?"<>|]/g, '').trim() || 'Untitled';
+  let target = path.join(NOTES_DIR, `${safeName}.md`);
+  let counter = 1;
+  while (true) {
+    try {
+      await fs.access(target);
+      target = path.join(NOTES_DIR, `${safeName} ${counter}.md`);
+      counter++;
+    } catch {
+      break;
+    }
+  }
+  await fs.writeFile(target, content ?? '', 'utf8');
+  return target;
+});
+
 ipcMain.handle('notes-dir', () => NOTES_DIR);

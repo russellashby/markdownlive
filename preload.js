@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('api', {
   renameFile: (filePath, newName) => ipcRenderer.invoke('rename-file', { filePath, newName }),
   deleteFile: (filePath) => ipcRenderer.invoke('delete-file', filePath),
   importFile: (name, content) => ipcRenderer.invoke('import-file', { name, content }),
+  saveImage: (name, bytes) => ipcRenderer.invoke('save-image', { name, bytes }),
   notesDir: () => ipcRenderer.invoke('notes-dir'),
   onNotesChanged: (cb) => {
     const handler = () => cb();

@@ -331,4 +331,25 @@ ipcMain.handle('import-file', async (_evt, { name, content }) => {
   return target;
 });
 
+ipcMain.handle('save-image', async (_evt, { name, bytes }) => {
+  const imagesDir = path.join(NOTES_DIR, 'images');
+  await fs.mkdir(imagesDir, { recursive: true });
+  const ext = (path.extname(name || '') || '.png').toLowerCase();
+  const baseRaw = path.basename(name || '', path.extname(name || ''));
+  const safeBase = baseRaw.replace(/[\\/:*?"<>|]/g, '').trim() || 'image';
+  let target = path.join(imagesDir, `${safeBase}${ext}`);
+  let counter = 1;
+  while (true) {
+    try {
+      await fs.access(target);
+      target = path.join(imagesDir, `${safeBase}-${counter}${ext}`);
+      counter++;
+    } catch {
+      break;
+    }
+  }
+  await fs.writeFile(target, Buffer.from(bytes));
+  return `images/${path.basename(target)}`;
+});
+
 ipcMain.handle('notes-dir', () => NOTES_DIR);

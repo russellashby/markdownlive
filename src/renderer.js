@@ -158,10 +158,29 @@ async function clearEditor() {
   updateWordCount('');
 }
 
+async function uploadImage(file) {
+  const buffer = await file.arrayBuffer();
+  return await window.api.saveImage(file.name, new Uint8Array(buffer));
+}
+
+async function proxyImageURL(url) {
+  if (!url) return url;
+  if (/^(https?:|data:|file:|blob:)/i.test(url)) return url;
+  if (url.startsWith('/')) return url;
+  const dir = await window.api.notesDir();
+  return `file://${dir}/${url}`;
+}
+
 async function mountCrepe(initial) {
   crepe = new Crepe({
     root: editorRoot,
-    defaultValue: initial || ''
+    defaultValue: initial || '',
+    featureConfigs: {
+      [Crepe.Feature.ImageBlock]: {
+        onUpload: uploadImage,
+        proxyDomURL: proxyImageURL
+      }
+    }
   });
 
   crepe.on(listener => {
@@ -278,16 +297,19 @@ document.addEventListener('dragover', (e) => {
 
 document.addEventListener('drop', async (e) => {
   if (!eventHasFiles(e)) return;
+
+  const mdFiles = Array.from(e.dataTransfer.files || []).filter(isMarkdownFile);
+  if (mdFiles.length === 0) {
+    e.preventDefault();
+    return;
+  }
+
   e.preventDefault();
   e.stopPropagation();
-
-  const files = Array.from(e.dataTransfer.files || []).filter(isMarkdownFile);
-  if (files.length === 0) return;
-
   await flushSave();
 
   let lastImportedPath = null;
-  for (const file of files) {
+  for (const file of mdFiles) {
     const content = await file.text();
     const baseName = file.name.replace(/\.md$/i, '');
     lastImportedPath = await window.api.importFile(baseName, content);

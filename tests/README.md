@@ -60,3 +60,7 @@ The next launch will recreate the directory and seed the welcome note.
 - [30 — Sidebar groups notes by folder](30-sidebar-groups-by-folder.md)
 - [31 — Folders expand and collapse on click](31-folder-expand-collapse.md)
 - [32 — Collapsed-folder state persists across restarts](32-folder-collapsed-state-persists.md)
+
+### Images
+- [33 — Inserting an image saves the file to disk](33-image-upload-saves-to-disk.md)
+- [34 — Inserted images survive an app restart](34-image-survives-restart.md)

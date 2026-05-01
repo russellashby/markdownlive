@@ -6,13 +6,44 @@
   "scripts": {
     "build:renderer": "esbuild src/renderer.js --bundle --outfile=dist/renderer.bundle.js --format=iife --platform=browser --loader:.css=css --loader:.woff=file --loader:.woff2=file --loader:.ttf=file --loader:.eot=file --loader:.svg=file --asset-names=[name]-[hash]",
     "prestart": "npm run build:renderer",
-    "start": "electron ."
+    "start": "electron .",
+    "predist:mac": "npm run build:renderer",
+    "dist:mac": "electron-builder --mac"
   },
   "dependencies": {
     "@milkdown/crepe": "^7.5.0"
   },
   "devDependencies": {
     "electron": "^30.0.0",
+    "electron-builder": "^25.1.8",
     "esbuild": "^0.24.0"
+  },
+  "build": {
+    "appId": "com.russellashby.markdown-editor",
+    "productName": "Markdown Editor",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html",
+      "styles.css",
+      "dist/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "identity": null
+    }
   }
 }

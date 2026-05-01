@@ -381,7 +381,39 @@ document.addEventListener('drop', async (e) => {
   }
 }, true);
 
-window.api.onNotesChanged(() => { loadFiles(); });
+async function reloadCurrentFileFromDisk() {
+  if (!currentFile) return;
+  if (pendingMarkdown !== lastSavedMarkdown) return;
+  let onDisk;
+  try {
+    onDisk = await window.api.readFile(currentFile.path);
+  } catch {
+    return;
+  }
+  if (onDisk === lastSavedMarkdown) return;
+
+  pendingMarkdown = onDisk;
+  lastSavedMarkdown = onDisk;
+  updateWordCount(onDisk);
+  setSaveStatus('Saved');
+
+  if (mode === 'raw' && rawEditor) {
+    const start = rawEditor.selectionStart;
+    const end = rawEditor.selectionEnd;
+    rawEditor.value = onDisk;
+    try { rawEditor.setSelectionRange(start, end); } catch {}
+  } else {
+    await destroyEditor();
+    pendingMarkdown = onDisk;
+    lastSavedMarkdown = onDisk;
+    await mountEditor(onDisk);
+  }
+}
+
+window.api.onNotesChanged(async () => {
+  await loadFiles();
+  await reloadCurrentFileFromDisk();
+});
 
 function setSidebarCollapsed(collapsed) {
   appEl.classList.toggle('sidebar-collapsed', collapsed);
@@ -412,6 +444,7 @@ function setTerminalWidth(px) {
 
 function fitTerminal() {
   if (!terminal || !terminalFit) return;
+  if (!terminalHostEl.offsetWidth || !terminalHostEl.offsetHeight) return;
   try {
     terminalFit.fit();
     if (terminalId != null) {
@@ -431,7 +464,10 @@ async function ensureTerminalSpawned() {
   terminalFit = new FitAddon();
   terminal.loadAddon(terminalFit);
   terminal.open(terminalHostEl);
-  terminalFit.fit();
+
+  const ro = new ResizeObserver(() => fitTerminal());
+  ro.observe(terminalHostEl);
+  fitTerminal();
 
   terminalId = await window.api.terminal.spawn(terminal.cols, terminal.rows);
   terminalDataUnsub = window.api.terminal.onData(terminalId, (data) => {

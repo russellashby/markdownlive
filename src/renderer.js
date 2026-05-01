@@ -10,9 +10,13 @@ const wordCountEl = document.getElementById('word-count');
 const saveStatusEl = document.getElementById('save-status');
 const deleteBtn = document.getElementById('delete-btn');
 const modeToggleBtn = document.getElementById('mode-toggle');
+const appEl = document.querySelector('.app');
+const sidebarCollapseBtn = document.getElementById('sidebar-collapse');
+const sidebarExpandBtn = document.getElementById('sidebar-expand');
 
 const SAVE_DEBOUNCE_MS = 1500;
 const MODE_KEY = 'mdedit.mode';
+const SIDEBAR_KEY = 'mdedit.sidebarCollapsed';
 
 let mode = localStorage.getItem(MODE_KEY) === 'raw' ? 'raw' : 'live';
 let crepe = null;
@@ -368,6 +372,18 @@ document.addEventListener('drop', async (e) => {
 }, true);
 
 window.api.onNotesChanged(() => { loadFiles(); });
+
+function setSidebarCollapsed(collapsed) {
+  appEl.classList.toggle('sidebar-collapsed', collapsed);
+  localStorage.setItem(SIDEBAR_KEY, collapsed ? '1' : '0');
+}
+
+sidebarCollapseBtn.addEventListener('click', () => setSidebarCollapsed(true));
+sidebarExpandBtn.addEventListener('click', () => setSidebarCollapsed(false));
+
+if (localStorage.getItem(SIDEBAR_KEY) === '1') {
+  appEl.classList.add('sidebar-collapsed');
+}
 
 updateModeButton();
 loadFiles();

@@ -69,3 +69,8 @@ The next launch will recreate the directory and seed the welcome note.
 - [35 — Toggle between raw and live editing modes](35-toggle-raw-and-live-mode.md)
 - [36 — Raw mode autosaves typed changes](36-raw-mode-autosaves.md)
 - [37 — Editor mode persists across restarts and notes](37-mode-persists-across-restart.md)
+
+### Sidebar collapse
+- [38 — Sidebar collapses to give the editor full width](38-sidebar-collapses.md)
+- [39 — Expand icon restores the sidebar](39-sidebar-re-expands.md)
+- [40 — Sidebar collapsed state persists across restarts](40-sidebar-state-persists.md)

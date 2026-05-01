@@ -17,17 +17,36 @@ html, body {
   display: grid;
   grid-template-columns: 240px 1fr;
   height: 100vh;
+  transition: grid-template-columns 160ms ease;
+}
+
+.app.sidebar-collapsed {
+  grid-template-columns: 0 1fr;
 }
 
 /* Sidebar */
 .sidebar {
   background: #1e2230;
   color: #c5cad6;
-  padding: 44px 0 8px;
+  padding: 44px 0 0;
   display: flex;
   flex-direction: column;
   border-right: 1px solid #161924;
+  overflow: hidden;
+  min-width: 0;
   -webkit-app-region: drag;
+}
+
+.sidebar-footer {
+  padding: 6px 10px 8px;
+  display: flex;
+  align-items: center;
+  -webkit-app-region: no-drag;
+}
+
+#sidebar-collapse {
+  font-size: 16px;
+  line-height: 1;
 }
 
 .sidebar-header {
@@ -202,6 +221,18 @@ html, body {
 
 #mode-toggle {
   margin-right: 6px;
+}
+
+.pane-toggle-btn {
+  display: none;
+  margin-right: 10px;
+  padding: 2px 9px;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.app.sidebar-collapsed .pane-toggle-btn {
+  display: inline-block;
 }
 
 .editor-host {

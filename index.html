@@ -15,10 +15,14 @@
         <button id="new-file-btn" class="icon-btn" title="New note">+</button>
       </div>
       <ul id="file-list" class="file-list"></ul>
+      <div class="sidebar-footer">
+        <button id="sidebar-collapse" class="icon-btn" title="Collapse notes panel" aria-label="Collapse notes panel">‹</button>
+      </div>
     </aside>
 
     <section class="editor-pane">
       <header class="pane-header">
+        <button id="sidebar-expand" class="ghost-btn pane-toggle-btn" title="Expand notes panel" aria-label="Expand notes panel">›</button>
         <input id="title-input" class="title-input" type="text" placeholder="Untitled" />
         <button id="mode-toggle" class="ghost-btn" title="Toggle raw markdown">Raw</button>
         <button id="delete-btn" class="ghost-btn" title="Delete note">Delete</button>

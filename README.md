@@ -14,6 +14,7 @@ A simple, fast markdown editor for macOS with a live WYSIWYG view, a flat workin
 - **Drag-and-drop import** — drop one or more `.md` files onto the window to copy them into your notes.
 - **Image insertion** — paste or attach an image and it's saved to `~/MarkdownNotes/images/` with a stable relative reference.
 - **Collapsible sidebar** — hide the notes panel for distraction-free writing.
+- **Integrated terminal** — toggle a right-hand pane (button or Cmd+`) running your default shell with `cwd` set to `~/MarkdownNotes/`. Edit notes from the CLI (e.g. with the Claude CLI) and watch them update live in the editor.
 - **macOS niceties** — system spell check, autocorrect, smart quotes/dashes, and a hidden-inset title bar.
 - **Autosave** — debounced save while typing, plus Cmd+S to flush immediately.
 

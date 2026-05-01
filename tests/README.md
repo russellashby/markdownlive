@@ -74,3 +74,8 @@ The next launch will recreate the directory and seed the welcome note.
 - [38 — Sidebar collapses to give the editor full width](38-sidebar-collapses.md)
 - [39 — Expand icon restores the sidebar](39-sidebar-re-expands.md)
 - [40 — Sidebar collapsed state persists across restarts](40-sidebar-state-persists.md)
+
+### Terminal pane
+- [41 — Terminal toggle opens an interactive shell](41-terminal-toggle-and-shell.md)
+- [42 — Terminal pane is resizable and remembers width](42-terminal-resize-and-persist.md)
+- [43 — External edits to the open note refresh the editor live](43-terminal-edits-refresh-editor.md)

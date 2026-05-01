@@ -10,6 +10,7 @@ MarkdownLive — a personal macOS markdown editor. Electron + Milkdown Crepe + p
 - Each UC ships 2–3 manual acceptance tests under `tests/` — Given/When/Then style, sequentially numbered. Update `tests/README.md` with a new section.
 - Commits follow the existing style: imperative subject, body explains *why*; HEREDOC body with `Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>` trailer. No "Generated with Claude Code" line.
 - After meaningful feature work I often ask for a new mac build. Bump the minor version in `package.json`, run `npm install --package-lock-only`, then `npm run dist:mac`. DMGs land in `release/`.
+- **Branching:** small UCs (a few files, no native deps, no big layout shifts) ship straight to main. Larger work that could leave main broken mid-flight — new native modules, new panes/layout sections, anything spanning many commits before it works end-to-end — goes on a `feat/<name>` branch and merges via PR (`gh pr create … && gh pr merge <n> --merge --delete-branch`). The terminal pane (UC-07) was the first time we used this; precedent for next time.
 
 ## Non-obvious details
 

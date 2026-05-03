@@ -15,7 +15,7 @@ As a user, I want the app to avoid writing to disk when nothing has actually cha
 ## Manual verification
 
 1. Open a note. Confirm status is **Saved**.
-2. Note the file's mtime: `stat -f "%Sm %Sm" "~/MarkdownNotes/<name>.md"`.
+2. Note the file's mtime: `stat -f "%Sm %Sm" ""$PROJECT"/<name>.md"`.
 3. Click around in the editor body. Move the cursor with arrow keys. Select and deselect text.
 4. Wait 3 seconds.
 5. Re-check the mtime — confirm it has not changed.

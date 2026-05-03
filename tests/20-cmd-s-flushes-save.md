@@ -19,3 +19,4 @@ As a user with muscle memory from other editors, I want **Cmd+S** to commit my p
 3. Confirm the status bar transitions to **Saved** within a fraction of a second.
 4. Confirm no system "save dialog" appears.
 5. Inspect the file on disk and confirm the new content is present.
+

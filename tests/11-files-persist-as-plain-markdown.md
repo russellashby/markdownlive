@@ -18,8 +18,8 @@ As a user, I want my notes to live as plain `.md` files on disk so that I can us
 2. Wait 2 seconds for autosave.
 3. Open the file in an external editor:
    ```sh
-   cat "~/MarkdownNotes/<name>.md"
+   cat ""$PROJECT"/<name>.md"
    ```
 4. Confirm the content is plain markdown — `# Heading`, `**bold**`, `- item`, fenced code blocks, etc.
 5. Confirm there is no JSON wrapper, no YAML frontmatter, and no binary content.
-6. Edit the file externally (e.g. `echo "external edit" >> ~/MarkdownNotes/<name>.md`), restart the app, and confirm the change appears in the editor.
+6. Edit the file externally (e.g. `echo "external edit" >> "$PROJECT"/<name>.md`), restart the app, and confirm the change appears in the editor.

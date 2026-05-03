@@ -6,7 +6,7 @@ As a user, I want dropped files to never overwrite an existing note so that I ca
 
 ## Acceptance criteria
 
-**Given** `~/MarkdownNotes/notes.md` already exists with content "original"
+**Given** `"$PROJECT"/notes.md` already exists with content "original"
 **When** I drag a different file also named `notes.md` onto the window
 **Then** the imported file is saved as `notes 1.md`
 **And** the existing `notes.md` is unchanged
@@ -16,7 +16,7 @@ As a user, I want dropped files to never overwrite an existing note so that I ca
 
 1. Make sure a `notes.md` already exists in the notes directory:
    ```sh
-   printf '# Original\n' > ~/MarkdownNotes/notes.md
+   printf '# Original\n' > "$PROJECT"/notes.md
    ```
 2. Create a different file with the same basename outside the notes directory:
    ```sh
@@ -25,8 +25,8 @@ As a user, I want dropped files to never overwrite an existing note so that I ca
 3. Drag `/tmp/notes.md` onto the app window.
 4. Confirm both files exist:
    ```sh
-   ls ~/MarkdownNotes/ | grep -E '^notes( 1)?\.md$'
+   ls "$PROJECT"/ | grep -E '^notes( 1)?\.md$'
    ```
-5. Confirm `~/MarkdownNotes/notes.md` still contains "Original" (`cat ~/MarkdownNotes/notes.md`).
-6. Confirm `~/MarkdownNotes/notes 1.md` contains "Imported version".
+5. Confirm `"$PROJECT"/notes.md` still contains "Original" (`cat "$PROJECT"/notes.md`).
+6. Confirm `"$PROJECT"/notes 1.md` contains "Imported version".
 7. Drag `/tmp/notes.md` onto the window a second time and confirm `notes 2.md` is created.

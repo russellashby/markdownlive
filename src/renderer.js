@@ -48,84 +48,116 @@ function updateWordCount(md) {
 }
 
 const COLLAPSED_KEY = 'mdedit.foldersCollapsed';
+let activeProjectDir = null;
 
-function getCollapsedFolders() {
+function readCollapsedMap() {
   try {
     const raw = localStorage.getItem(COLLAPSED_KEY);
-    return new Set(raw ? JSON.parse(raw) : []);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed;
+    return {};
   } catch {
-    return new Set();
+    return {};
   }
 }
 
+function getCollapsedFolders() {
+  if (!activeProjectDir) return new Set();
+  const map = readCollapsedMap();
+  return new Set(Array.isArray(map[activeProjectDir]) ? map[activeProjectDir] : []);
+}
+
 function saveCollapsedFolders(set) {
+  if (!activeProjectDir) return;
+  const map = readCollapsedMap();
+  map[activeProjectDir] = Array.from(set);
   try {
-    localStorage.setItem(COLLAPSED_KEY, JSON.stringify(Array.from(set)));
+    localStorage.setItem(COLLAPSED_KEY, JSON.stringify(map));
   } catch {}
 }
 
-function toggleFolderCollapsed(folderName) {
+function toggleFolderCollapsed(folderPath) {
   const collapsed = getCollapsedFolders();
-  if (collapsed.has(folderName)) collapsed.delete(folderName);
-  else collapsed.add(folderName);
+  if (collapsed.has(folderPath)) collapsed.delete(folderPath);
+  else collapsed.add(folderPath);
   saveCollapsedFolders(collapsed);
 }
 
-function makeFileItem(file, activatePath) {
+function makeFileItem(file, activatePath, depth) {
   const li = document.createElement('li');
   li.className = 'file-item';
   li.dataset.path = file.path;
   li.textContent = file.name;
+  li.style.paddingLeft = `${14 + depth * 16}px`;
   if (currentFile && currentFile.path === file.path) li.classList.add('active');
   if (activatePath && activatePath === file.path) li.classList.add('active');
   li.addEventListener('click', () => openFile(file));
   return li;
 }
 
-async function loadFiles(activatePath) {
-  const files = await window.api.listFiles();
-  files.sort((a, b) => b.mtime - a.mtime);
-  const rootFiles = files.filter(f => !f.folder);
-  const folderMap = new Map();
+function buildTree(files) {
+  const root = { files: [], folders: new Map() };
   for (const file of files) {
-    if (!file.folder) continue;
-    if (!folderMap.has(file.folder)) folderMap.set(file.folder, []);
-    folderMap.get(file.folder).push(file);
+    if (!file.dir) {
+      root.files.push(file);
+      continue;
+    }
+    const segments = file.dir.split('/');
+    let node = root;
+    for (const seg of segments) {
+      if (!node.folders.has(seg)) {
+        node.folders.set(seg, { files: [], folders: new Map() });
+      }
+      node = node.folders.get(seg);
+    }
+    node.files.push(file);
   }
-  const folderNames = Array.from(folderMap.keys()).sort((a, b) => a.localeCompare(b));
-  const collapsed = getCollapsedFolders();
+  return root;
+}
 
-  fileListEl.innerHTML = '';
-  for (const file of rootFiles) {
-    fileListEl.appendChild(makeFileItem(file, activatePath));
+function renderTree(node, parentUl, activatePath, depth, collapsed, pathPrefix) {
+  for (const file of node.files) {
+    parentUl.appendChild(makeFileItem(file, activatePath, depth));
   }
+  const folderNames = Array.from(node.folders.keys()).sort((a, b) => a.localeCompare(b));
   for (const name of folderNames) {
-    const isCollapsed = collapsed.has(name);
+    const folderPath = pathPrefix ? `${pathPrefix}/${name}` : name;
+    const isCollapsed = collapsed.has(folderPath);
     const group = document.createElement('li');
     group.className = 'folder-group';
     if (isCollapsed) group.classList.add('collapsed');
 
     const header = document.createElement('div');
     header.className = 'folder-header';
+    header.style.paddingLeft = `${14 + depth * 16}px`;
     header.innerHTML = '<span class="folder-chevron">▾</span>';
     const label = document.createElement('span');
     label.className = 'folder-name';
     label.textContent = name;
     header.appendChild(label);
     header.addEventListener('click', () => {
-      toggleFolderCollapsed(name);
+      toggleFolderCollapsed(folderPath);
       group.classList.toggle('collapsed');
     });
     group.appendChild(header);
 
     const sub = document.createElement('ul');
     sub.className = 'folder-files';
-    for (const file of folderMap.get(name)) {
-      sub.appendChild(makeFileItem(file, activatePath));
-    }
+    renderTree(node.folders.get(name), sub, activatePath, depth + 1, collapsed, folderPath);
     group.appendChild(sub);
-    fileListEl.appendChild(group);
+    parentUl.appendChild(group);
   }
+}
+
+async function loadFiles(activatePath) {
+  const files = await window.api.listFiles();
+  files.sort((a, b) => b.mtime - a.mtime);
+  const tree = buildTree(files);
+  const collapsed = getCollapsedFolders();
+
+  fileListEl.innerHTML = '';
+  renderTree(tree, fileListEl, activatePath, 0, collapsed, '');
 
   if (!currentFile && files.length > 0) {
     await openFile(files[0]);
@@ -186,7 +218,7 @@ async function proxyImageURL(url) {
   if (!url) return url;
   if (/^(https?:|data:|file:|blob:)/i.test(url)) return url;
   if (url.startsWith('/')) return url;
-  const dir = await window.api.notesDir();
+  const dir = await window.api.projectDir();
   return `file://${dir}/${url}`;
 }
 
@@ -534,9 +566,101 @@ window.addEventListener('resize', () => fitTerminal());
 
 const savedTerminalWidth = parseInt(localStorage.getItem(TERMINAL_WIDTH_KEY) || '0');
 if (savedTerminalWidth) appEl.style.setProperty('--terminal-w', `${clampTerminalWidth(savedTerminalWidth)}px`);
-if (localStorage.getItem(TERMINAL_VISIBLE_KEY) === '1') {
-  setTerminalVisible(true);
+
+const splashEl = document.getElementById('splash');
+const splashPickBtn = document.getElementById('splash-pick');
+const splashRecentsEl = document.getElementById('splash-recents');
+
+function shortenPath(p) {
+  const home = '/Users/';
+  if (p.startsWith(home)) {
+    const rest = p.slice(home.length);
+    const slash = rest.indexOf('/');
+    if (slash > 0) return '~' + rest.slice(slash);
+  }
+  return p;
 }
 
+async function renderRecents() {
+  const recents = await window.api.getRecentProjects();
+  splashRecentsEl.innerHTML = '';
+  const title = document.createElement('div');
+  title.className = 'splash-recents-title';
+  title.textContent = 'Recent projects';
+  splashRecentsEl.appendChild(title);
+
+  if (recents.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'splash-recent-empty';
+    empty.textContent = 'No recent projects yet.';
+    splashRecentsEl.appendChild(empty);
+    return;
+  }
+  for (const dir of recents) {
+    const btn = document.createElement('button');
+    btn.className = 'splash-recent-item';
+    btn.textContent = shortenPath(dir);
+    btn.title = dir;
+    btn.addEventListener('click', () => switchProject(dir));
+    splashRecentsEl.appendChild(btn);
+  }
+}
+
+function teardownTerminal() {
+  if (terminalId != null) {
+    window.api.terminal.kill(terminalId);
+    terminalId = null;
+  }
+  if (terminalDataUnsub) { terminalDataUnsub(); terminalDataUnsub = null; }
+  if (terminalExitUnsub) { terminalExitUnsub(); terminalExitUnsub = null; }
+  if (terminal) {
+    try { terminal.dispose(); } catch {}
+    terminal = null;
+    terminalFit = null;
+  }
+  terminalHostEl.innerHTML = '';
+}
+
+async function switchProject(dir) {
+  await flushSave();
+  teardownTerminal();
+  await clearEditor();
+  try {
+    await window.api.openProject(dir);
+  } catch (e) {
+    alert(`Could not open ${dir}\n\n${e.message || e}`);
+    return;
+  }
+  activeProjectDir = dir;
+  splashEl.classList.remove('visible');
+  await loadFiles();
+  if (localStorage.getItem(TERMINAL_VISIBLE_KEY) === '1') {
+    setTerminalVisible(true);
+  }
+}
+
+async function pickAndSwitch() {
+  const picked = await window.api.pickProjectFolder();
+  if (picked) await switchProject(picked);
+}
+
+splashPickBtn.addEventListener('click', pickAndSwitch);
+
+window.api.onSwitchProject(switchProject);
+window.api.onPickAndSwitch(pickAndSwitch);
+
 updateModeButton();
-loadFiles();
+
+(async () => {
+  const current = await window.api.getCurrentProject();
+  if (current) {
+    activeProjectDir = current;
+    splashEl.classList.remove('visible');
+    await loadFiles();
+    if (localStorage.getItem(TERMINAL_VISIBLE_KEY) === '1') {
+      setTerminalVisible(true);
+    }
+  } else {
+    await renderRecents();
+  }
+})();

@@ -16,7 +16,7 @@ As a user, I want changes saved automatically without thrashing the disk on ever
 
 1. Open any note. In a terminal, run:
    ```sh
-   stat -f "%Sm" "~/MarkdownNotes/<name>.md"
+   stat -f "%Sm" ""$PROJECT"/<name>.md"
    ```
    Note the mtime.
 2. Switch to the editor and type a paragraph rapidly without pausing for more than a second.

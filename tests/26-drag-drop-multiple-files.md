@@ -8,7 +8,7 @@ As a user, I want to import several markdown files at once so that I can bring a
 
 **Given** the app is open
 **When** I drag multiple `.md` files onto the app window in a single drop
-**Then** every dropped file is saved into `~/MarkdownNotes/`
+**Then** every dropped file is saved into `"$PROJECT"/`
 **And** each appears in the sidebar
 **And** the last imported file becomes the active note
 
@@ -24,7 +24,7 @@ As a user, I want to import several markdown files at once so that I can bring a
 3. Drag the selection onto the app window and release.
 4. Confirm all three files exist in the notes directory:
    ```sh
-   ls ~/MarkdownNotes/ | grep -E '^(alpha|beta|gamma)\.md$'
+   ls "$PROJECT"/ | grep -E '^(alpha|beta|gamma)\.md$'
    ```
 5. Confirm "alpha", "beta", and "gamma" all appear as separate entries in the sidebar.
 6. Confirm one of them (the last imported) is the active note and the editor shows its content.

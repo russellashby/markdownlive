@@ -2,54 +2,71 @@ const { app, BrowserWindow, ipcMain, dialog, Menu, MenuItem } = require('electro
 const path = require('path');
 const fs = require('fs').promises;
 const { watch } = require('fs');
-const os = require('os');
 const pty = require('node-pty');
 
-const NOTES_DIR = path.join(os.homedir(), 'MarkdownNotes');
+let currentProjectDir = null;
+let mainWindow = null;
+let stopWatching = null;
 
-async function ensureNotesDir() {
-  try {
-    await fs.mkdir(NOTES_DIR, { recursive: true });
-    const files = await fs.readdir(NOTES_DIR);
-    const mdFiles = files.filter(f => f.endsWith('.md'));
-    if (mdFiles.length === 0) {
-      const welcomePath = path.join(NOTES_DIR, 'Getting Started.md');
-      const welcome = `# Hello, stranger!
-
-Welcome to your markdown editor. This is a simple text editor, but it's so much more, and some things... may not work the way you expect.
-
-Before you start exploring, you should know how to do a few things.
-
-## You need to understand this
-
-Anything wrapped in **double asterisks** will appear bold. _Single underscores_ produce italics.
-
-## What's a focus?
-
-A focus lets you write while everything else fades away. Try writing a long first item, and a second one. To create a list, just type a star or dash, then a space.
-
-- Remember to have fun
-- The team behind Ulysses
-
-> A quote like this is a great way to highlight something important.
-
-\`Inline code\` and code blocks are also supported:
-
-\`\`\`javascript
-function hello() {
-  console.log("Hello, world!");
+const RECENTS_MAX = 10;
+function recentsPath() {
+  return path.join(app.getPath('userData'), 'recent-projects.json');
 }
-\`\`\`
-`;
-      await fs.writeFile(welcomePath, welcome, 'utf8');
+
+async function loadRecentProjects() {
+  try {
+    const raw = await fs.readFile(recentsPath(), 'utf8');
+    const list = JSON.parse(raw);
+    if (!Array.isArray(list)) return [];
+    const checked = [];
+    for (const p of list) {
+      try {
+        const stat = await fs.stat(p);
+        if (stat.isDirectory()) checked.push(p);
+      } catch {}
     }
-  } catch (err) {
-    console.error('Failed to ensure notes dir:', err);
+    return checked;
+  } catch {
+    return [];
   }
 }
 
-function buildAppMenu() {
+async function recordRecentProject(dir) {
+  const existing = await loadRecentProjects();
+  const next = [dir, ...existing.filter(p => p !== dir)].slice(0, RECENTS_MAX);
+  try {
+    await fs.writeFile(recentsPath(), JSON.stringify(next, null, 2), 'utf8');
+  } catch (err) {
+    console.error('Failed to write recents:', err);
+  }
+}
+
+function requireProject() {
+  if (!currentProjectDir) throw new Error('No project open');
+  return currentProjectDir;
+}
+
+function shortenHomePath(p) {
+  const home = require('os').homedir();
+  if (p.startsWith(home + path.sep) || p === home) return '~' + p.slice(home.length);
+  return p;
+}
+
+async function buildAppMenu() {
   const isMac = process.platform === 'darwin';
+  const recents = await loadRecentProjects();
+
+  const recentSubmenu = recents.length === 0
+    ? [{ label: 'No recent projects', enabled: false }]
+    : recents.map(dir => ({
+        label: shortenHomePath(dir),
+        click: () => {
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('switch-project', dir);
+          }
+        }
+      }));
+
   const template = [
     ...(isMac ? [{
       label: app.name,
@@ -65,6 +82,24 @@ function buildAppMenu() {
         { role: 'quit' }
       ]
     }] : []),
+    {
+      label: 'File',
+      submenu: [
+        {
+          label: 'Open Folder…',
+          accelerator: 'CmdOrCtrl+O',
+          click: () => {
+            if (mainWindow && !mainWindow.isDestroyed()) {
+              mainWindow.webContents.send('pick-and-switch');
+            }
+          }
+        },
+        {
+          label: 'Open Recent',
+          submenu: recentSubmenu
+        }
+      ]
+    },
     {
       label: 'Edit',
       submenu: [
@@ -164,28 +199,50 @@ function attachContextMenu(win) {
   });
 }
 
-function watchNotesDir(win) {
+const WATCH_IGNORE_PREFIXES = ['node_modules', '.git', '.markdownlive'];
+
+function isIgnoredWatchPath(filename) {
+  if (!filename) return false;
+  const segments = filename.split(path.sep);
+  return WATCH_IGNORE_PREFIXES.includes(segments[0]);
+}
+
+function watchProject(win, dir) {
   let timer = null;
   let watcher;
   try {
-    watcher = watch(NOTES_DIR, { persistent: true, recursive: true }, () => {
+    watcher = watch(dir, { persistent: true, recursive: true }, (_evt, filename) => {
+      if (isIgnoredWatchPath(filename)) return;
       clearTimeout(timer);
       timer = setTimeout(() => {
         if (!win.isDestroyed()) win.webContents.send('notes-dir-changed');
       }, 200);
     });
   } catch (err) {
-    console.error('Failed to watch notes dir:', err);
-    return;
+    console.error('Failed to watch project dir:', err);
+    return () => {};
   }
-  win.on('closed', () => {
+  return () => {
     clearTimeout(timer);
     try { watcher.close(); } catch {}
-  });
+  };
+}
+
+async function setProject(dir) {
+  if (stopWatching) {
+    stopWatching();
+    stopWatching = null;
+  }
+  currentProjectDir = dir;
+  await recordRecentProject(dir);
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    stopWatching = watchProject(mainWindow, dir);
+  }
+  await buildAppMenu();
 }
 
 function createWindow() {
-  const win = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1200,
     height: 780,
     titleBarStyle: 'hiddenInset',
@@ -199,16 +256,22 @@ function createWindow() {
     }
   });
 
-  win.webContents.session.setSpellCheckerLanguages(['en-GB', 'en-US']);
-  attachContextMenu(win);
-  watchNotesDir(win);
+  mainWindow.webContents.session.setSpellCheckerLanguages(['en-GB', 'en-US']);
+  attachContextMenu(mainWindow);
 
-  win.loadFile('index.html');
+  mainWindow.loadFile('index.html');
+
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+    if (stopWatching) {
+      stopWatching();
+      stopWatching = null;
+    }
+  });
 }
 
 app.whenReady().then(async () => {
-  buildAppMenu();
-  await ensureNotesDir();
+  await buildAppMenu();
   createWindow();
 
   app.on('activate', () => {
@@ -220,42 +283,58 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
-ipcMain.handle('list-files', async () => {
-  const rootEntries = await fs.readdir(NOTES_DIR, { withFileTypes: true });
-  const files = [];
-  for (const entry of rootEntries) {
-    if (entry.isFile() && entry.name.endsWith('.md')) {
-      const full = path.join(NOTES_DIR, entry.name);
+ipcMain.handle('get-current-project', () => currentProjectDir);
+
+ipcMain.handle('get-recent-projects', () => loadRecentProjects());
+
+ipcMain.handle('pick-project-folder', async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: 'Pick a project folder',
+    properties: ['openDirectory', 'createDirectory']
+  });
+  if (result.canceled || result.filePaths.length === 0) return null;
+  return result.filePaths[0];
+});
+
+ipcMain.handle('open-project', async (_evt, dir) => {
+  if (!dir) throw new Error('Missing project dir');
+  const stat = await fs.stat(dir);
+  if (!stat.isDirectory()) throw new Error('Not a directory');
+  await setProject(dir);
+  return dir;
+});
+
+async function walkProject(absDir, relDir, out) {
+  let entries;
+  try {
+    entries = await fs.readdir(absDir, { withFileTypes: true });
+  } catch {
+    return;
+  }
+  for (const entry of entries) {
+    if (entry.isDirectory()) {
+      if (WATCH_IGNORE_PREFIXES.includes(entry.name)) continue;
+      const subAbs = path.join(absDir, entry.name);
+      const subRel = relDir ? `${relDir}/${entry.name}` : entry.name;
+      await walkProject(subAbs, subRel, out);
+    } else if (entry.isFile() && entry.name.endsWith('.md')) {
+      const full = path.join(absDir, entry.name);
       const stat = await fs.stat(full);
-      files.push({
+      out.push({
         name: entry.name.replace(/\.md$/, ''),
         path: full,
         mtime: stat.mtimeMs,
-        folder: null
+        dir: relDir
       });
-    } else if (entry.isDirectory()) {
-      const folderPath = path.join(NOTES_DIR, entry.name);
-      let subEntries;
-      try {
-        subEntries = await fs.readdir(folderPath, { withFileTypes: true });
-      } catch {
-        continue;
-      }
-      for (const sub of subEntries) {
-        if (sub.isFile() && sub.name.endsWith('.md')) {
-          const full = path.join(folderPath, sub.name);
-          const stat = await fs.stat(full);
-          files.push({
-            name: sub.name.replace(/\.md$/, ''),
-            path: full,
-            mtime: stat.mtimeMs,
-            folder: entry.name
-          });
-        }
-      }
     }
   }
-  return files;
+}
+
+ipcMain.handle('list-files', async () => {
+  const root = requireProject();
+  const out = [];
+  await walkProject(root, '', out);
+  return out;
 });
 
 ipcMain.handle('read-file', async (_evt, filePath) => {
@@ -268,13 +347,14 @@ ipcMain.handle('save-file', async (_evt, { filePath, content }) => {
 });
 
 ipcMain.handle('create-file', async (_evt, name) => {
+  const root = requireProject();
   const safeName = (name || 'Untitled').replace(/[\\/:*?"<>|]/g, '').trim() || 'Untitled';
-  let target = path.join(NOTES_DIR, `${safeName}.md`);
+  let target = path.join(root, `${safeName}.md`);
   let counter = 1;
   while (true) {
     try {
       await fs.access(target);
-      target = path.join(NOTES_DIR, `${safeName} ${counter}.md`);
+      target = path.join(root, `${safeName} ${counter}.md`);
       counter++;
     } catch {
       break;
@@ -315,14 +395,15 @@ ipcMain.handle('delete-file', async (_evt, filePath) => {
 });
 
 ipcMain.handle('import-file', async (_evt, { name, content }) => {
+  const root = requireProject();
   const stripped = (name || 'Untitled').replace(/\.md$/i, '');
   const safeName = stripped.replace(/[\\/:*?"<>|]/g, '').trim() || 'Untitled';
-  let target = path.join(NOTES_DIR, `${safeName}.md`);
+  let target = path.join(root, `${safeName}.md`);
   let counter = 1;
   while (true) {
     try {
       await fs.access(target);
-      target = path.join(NOTES_DIR, `${safeName} ${counter}.md`);
+      target = path.join(root, `${safeName} ${counter}.md`);
       counter++;
     } catch {
       break;
@@ -333,7 +414,8 @@ ipcMain.handle('import-file', async (_evt, { name, content }) => {
 });
 
 ipcMain.handle('save-image', async (_evt, { name, bytes }) => {
-  const imagesDir = path.join(NOTES_DIR, 'images');
+  const root = requireProject();
+  const imagesDir = path.join(root, '.markdownlive', 'images');
   await fs.mkdir(imagesDir, { recursive: true });
   const ext = (path.extname(name || '') || '.png').toLowerCase();
   const baseRaw = path.basename(name || '', path.extname(name || ''));
@@ -350,10 +432,10 @@ ipcMain.handle('save-image', async (_evt, { name, bytes }) => {
     }
   }
   await fs.writeFile(target, Buffer.from(bytes));
-  return `images/${path.basename(target)}`;
+  return `.markdownlive/images/${path.basename(target)}`;
 });
 
-ipcMain.handle('notes-dir', () => NOTES_DIR);
+ipcMain.handle('project-dir', () => currentProjectDir);
 
 const ptyProcesses = new Map();
 let nextPtyId = 1;
@@ -363,12 +445,13 @@ function shellCommand() {
 }
 
 ipcMain.handle('terminal-spawn', (evt, { cols, rows }) => {
+  const cwd = requireProject();
   const id = nextPtyId++;
   const proc = pty.spawn(shellCommand(), [], {
     name: 'xterm-color',
     cols: cols || 80,
     rows: rows || 24,
-    cwd: NOTES_DIR,
+    cwd,
     env: process.env
   });
   ptyProcesses.set(id, proc);

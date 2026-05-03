@@ -9,11 +9,25 @@ contextBridge.exposeInMainWorld('api', {
   deleteFile: (filePath) => ipcRenderer.invoke('delete-file', filePath),
   importFile: (name, content) => ipcRenderer.invoke('import-file', { name, content }),
   saveImage: (name, bytes) => ipcRenderer.invoke('save-image', { name, bytes }),
-  notesDir: () => ipcRenderer.invoke('notes-dir'),
+  projectDir: () => ipcRenderer.invoke('project-dir'),
+  getCurrentProject: () => ipcRenderer.invoke('get-current-project'),
+  getRecentProjects: () => ipcRenderer.invoke('get-recent-projects'),
+  pickProjectFolder: () => ipcRenderer.invoke('pick-project-folder'),
+  openProject: (dir) => ipcRenderer.invoke('open-project', dir),
   onNotesChanged: (cb) => {
     const handler = () => cb();
     ipcRenderer.on('notes-dir-changed', handler);
     return () => ipcRenderer.removeListener('notes-dir-changed', handler);
+  },
+  onSwitchProject: (cb) => {
+    const handler = (_evt, dir) => cb(dir);
+    ipcRenderer.on('switch-project', handler);
+    return () => ipcRenderer.removeListener('switch-project', handler);
+  },
+  onPickAndSwitch: (cb) => {
+    const handler = () => cb();
+    ipcRenderer.on('pick-and-switch', handler);
+    return () => ipcRenderer.removeListener('pick-and-switch', handler);
   },
   terminal: {
     spawn: (cols, rows) => ipcRenderer.invoke('terminal-spawn', { cols, rows }),

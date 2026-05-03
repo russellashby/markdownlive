@@ -17,6 +17,6 @@ As a user, I want to type any title I want without worrying about producing a co
 1. Open any note.
 2. Set the title to `Notes / Drafts: 2026?`.
 3. Wait one second for the rename to apply.
-4. Inspect `~/MarkdownNotes/`. Confirm a file like `Notes  Drafts 2026.md` exists (illegal characters removed; spaces preserved).
+4. Inspect `"$PROJECT"/`. Confirm a file like `Notes  Drafts 2026.md` exists (illegal characters removed; spaces preserved).
 5. Set the title to `:::` (only illegal characters).
 6. Confirm the file becomes `Untitled.md` (or `Untitled N.md` if collision).

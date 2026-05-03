@@ -20,7 +20,7 @@ As a user, I want raw-mode edits to autosave just like live-mode edits so that I
 4. Confirm the status bar transitions to "Unsaved" then "Saving…" and finally "Saved" within ~2 seconds.
 5. Verify on disk the change is present:
    ```sh
-   tail -n 3 ~/MarkdownNotes/<your-note>.md
+   tail -n 3 "$PROJECT"/<your-note>.md
    ```
    The new line should appear verbatim.
 6. Type another change. Before the debounce fires, press **Cmd+S**.

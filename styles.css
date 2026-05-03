@@ -23,6 +23,102 @@ html, body {
   transition: grid-template-columns 160ms ease;
 }
 
+.splash {
+  position: fixed;
+  inset: 0;
+  background: #1e2230;
+  color: #e6e8ef;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  -webkit-app-region: drag;
+}
+
+.splash.visible {
+  display: flex;
+}
+
+.splash-card {
+  width: 480px;
+  max-width: calc(100% - 48px);
+  padding: 40px;
+  background: #262b3c;
+  border-radius: 14px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
+  -webkit-app-region: no-drag;
+}
+
+.splash-title {
+  font-size: 22px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: #ffffff;
+}
+
+.splash-subtitle {
+  font-size: 13px;
+  color: #9aa0b1;
+  margin-bottom: 24px;
+}
+
+.splash-pick-btn {
+  display: block;
+  width: 100%;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 8px;
+  background: #4c8bf5;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-bottom: 24px;
+}
+
+.splash-pick-btn:hover {
+  background: #5b97f8;
+}
+
+.splash-recents {
+  border-top: 1px solid #353a4d;
+  padding-top: 16px;
+}
+
+.splash-recents-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #6f7689;
+  margin-bottom: 8px;
+}
+
+.splash-recent-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border: none;
+  background: transparent;
+  color: #c5cad6;
+  font-size: 13px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.splash-recent-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+}
+
+.splash-recent-empty {
+  font-size: 12px;
+  color: #6f7689;
+  padding: 4px 10px;
+}
+
 .app.sidebar-collapsed {
   --sidebar-w: 0px;
 }
@@ -185,10 +281,6 @@ html, body {
 
 .folder-files {
   list-style: none;
-}
-
-.folder-files .file-item {
-  padding-left: 28px;
 }
 
 .folder-group.collapsed .folder-files {

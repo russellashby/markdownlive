@@ -22,4 +22,4 @@ As a user, I want to click any note in the sidebar to open it in the editor so t
 4. Confirm the editor now shows Bravo's content.
 5. Confirm the title field reads "Bravo".
 6. Click **Alpha** again — confirm "edit-marker" is still present (saved before the switch).
-7. Inspect `~/MarkdownNotes/Alpha.md` on disk and confirm "edit-marker" is in the file.
+7. Inspect `"$PROJECT"/Alpha.md` on disk and confirm "edit-marker" is in the file.

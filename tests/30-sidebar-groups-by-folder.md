@@ -2,11 +2,11 @@
 
 ## Story
 
-As a user, I want notes that I organise into subfolders inside `~/MarkdownNotes/` to appear under those folder names in the sidebar so that I can keep distinct topics visually separated.
+As a user, I want notes that I organise into subfolders inside `"$PROJECT"/` to appear under those folder names in the sidebar so that I can keep distinct topics visually separated.
 
 ## Acceptance criteria
 
-**Given** `~/MarkdownNotes/` contains both files at the root and files inside subfolders
+**Given** `"$PROJECT"/` contains both files at the root and files inside subfolders
 **When** the app loads (or refreshes after a directory change)
 **Then** root-level notes appear at the top of the sidebar (most-recent first)
 **And** each subfolder appears below as a header with its notes nested under it
@@ -16,11 +16,11 @@ As a user, I want notes that I organise into subfolders inside `~/MarkdownNotes/
 
 1. From a terminal, set up a mix of root and subfolder notes:
    ```sh
-   mkdir -p ~/MarkdownNotes/Work ~/MarkdownNotes/Personal
-   printf '# Standalone\n' > ~/MarkdownNotes/standalone.md
-   printf '# Sprint plan\n' > ~/MarkdownNotes/Work/sprint-plan.md
-   printf '# OKRs\n' > ~/MarkdownNotes/Work/okrs.md
-   printf '# Garden\n' > ~/MarkdownNotes/Personal/garden.md
+   mkdir -p "$PROJECT"/Work "$PROJECT"/Personal
+   printf '# Standalone\n' > "$PROJECT"/standalone.md
+   printf '# Sprint plan\n' > "$PROJECT"/Work/sprint-plan.md
+   printf '# OKRs\n' > "$PROJECT"/Work/okrs.md
+   printf '# Garden\n' > "$PROJECT"/Personal/garden.md
    ```
 2. Start (or restart) the app.
 3. Confirm "standalone" appears at the top of the sidebar.

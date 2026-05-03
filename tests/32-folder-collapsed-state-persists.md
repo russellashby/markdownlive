@@ -17,10 +17,10 @@ As a user, I want the app to remember which folders I've collapsed so that I don
 2. Start the app. Both folders should be expanded by default.
 3. Click one folder header to collapse it. Leave the other expanded.
 4. Quit the app fully (Cmd+Q).
-5. Relaunch the app.
+5. Relaunch the app and re-open the project from the splash.
 6. Confirm:
    - The folder you collapsed is still collapsed (chevron rotated, notes hidden).
    - The folder you left expanded is still expanded.
 7. Click the collapsed folder to re-expand it.
-8. Quit and relaunch once more.
+8. Quit and relaunch once more, re-opening the project from the splash.
 9. Confirm both folders are now expanded — the change has been remembered.
